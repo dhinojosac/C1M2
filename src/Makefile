@@ -60,7 +60,7 @@ CPPFLAGs = -mcpu=$(CPU) -m$(ARCH) --specs=$(SPECS) -Wall
 	$(CC) $(CFLAGS) -S
 
 #Generate object .o file using -c flag
-%.o: %c
+%.o: %.c
 	$(CC) -c $< $(CFLAGS) -o $@ -I$(INCLUDES)
 
 #Compile-all .PHONY, but don't link (ex. make compile-all)
