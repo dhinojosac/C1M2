@@ -30,7 +30,7 @@
 include sources.mk
 
 # Platform Overrides
-#PLATFORM = 
+PLATFORM = HOST
 
 # Architectures Specific Flags
 LINKER_FILE = msp432p401r.lds
@@ -41,8 +41,10 @@ SPECS = nosys.specs
 # Compiler Flags and Defines
 ifeq ($(PLATFORM),HOST)
 	CC = gcc
+	DEFINES = -DHOST
 else
 	CC = arm-none-eabi-gcc
+	DEFINES = -DMSP430
 endif
 
 CFLAGS = -Wall -Werror -g -O0 -std=c99
@@ -52,26 +54,26 @@ CPPFLAGs = -mcpu=$(CPU) -m$(ARCH) --specs=$(SPECS) -Wall
 
 
 #Generate preprocessed output .i files, using -E flag
-%.i: %.c $(DEPS)
-	$(CC) $(CFLAGS) -E
+%.i: %.c 
+	$(CC) -E $< $(CFLAGS) -o $@ -I$(INCLUDES) $(DEFINES)
 
 #Generate assembly .asm files using -S flag
-%.asm: %.c $(DEPS)
-	$(CC) $(CFLAGS) -S
+%.asm: %.c
+	$(CC) -S $< $(CFLAGS) -o $@ -I$(INCLUDES) $(DEFINES)
 
 #Generate object .o file using -c flag
 %.o: %.c
-	$(CC) -c $< $(CFLAGS) -o $@ -I$(INCLUDES)
+	$(CC) -c $< $(CFLAGS) -o $@ -I$(INCLUDES) $(DEFINES)
 
 #Compile-all .PHONY, but don't link (ex. make compile-all)
 .PHONY: compile-all
 compile-all:
-	$(CC) $(CFLAGS)
+	$(CC) $(CFLAGS) -o c1m2.out main.c -I$(INCLUDES) $(DEFINES)
 
 #Compile all object .PHONY (ex. make build)
 .PHONY: build
 build:
-	$(CC) $(CFLAGS)
+	$(CC) $(CFLAGS) -o 
 
 #Clean
 .PHONY: clean
