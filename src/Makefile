@@ -29,10 +29,15 @@
 #------------------------------------------------------------------------------
 include sources.mk
 
-# Platform Overrides
-PLATFORM = HOST
+# Target
+TARGET = c1m2
 
-# Architectures Specific Flags
+OBJS = $(SOURCES:.c=.o)
+DEPS = $(SOURCES:.c=.d)
+LINKS = $(SOURCES:.c=.i)
+ASMS = $(SOURCES:.c=.asm)
+
+# Architectures Specific Flags to MSP432
 LINKER_FILE = msp432p401r.lds
 CPU =cortex-m4
 ARCH =thumb
@@ -41,41 +46,50 @@ SPECS = nosys.specs
 # Compiler Flags and Defines
 ifeq ($(PLATFORM),HOST)
 	CC = gcc
+	LD = ld
+	LDFLAGS = -Wl,-Map=$(TARGET).map
+	CFLAGS = -Wall -Werror -g -O0 -std=c99
 	DEFINES = -DHOST
-else
+	PRINT_SIZE = size
+else #MSP432
 	CC = arm-none-eabi-gcc
+	LD = arm-none-eabi-ld
+	LDFLAGS = -Wl,-Map=$(TARGET).map -T $(LINKER_FILE)
+	CFLAGS = -Wall -Werror -g -O0 -std=c99 -mcpu=$(CPU) -m$(ARCH) -march=armv7e-m -mfloat-abi=hard -mfpu=fpv4-sp-d16 --specs=$(SPECS)
 	DEFINES = -DMSP430
+	PRINT_SIZE = arm-none-eabi-size
 endif
-
-CFLAGS = -Wall -Werror -g -O0 -std=c99
-LD = arm-none.eabi-ld
-LDFLAGS = -Wl,-Map=$(TARGET).map -T $(LINKER_FILE)
-CPPFLAGs = -mcpu=$(CPU) -m$(ARCH) --specs=$(SPECS) -Wall 
 
 
 #Generate preprocessed output .i files, using -E flag
-%.i: %.c 
-	$(CC) -E $< $(CFLAGS) -o $@ -I$(INCLUDES) $(DEFINES)
+%.i: %.c
+	$(CC) -E $< $(CFLAGS) -o $@ $(INCLUDE_PATH) $(DEFINES)
 
 #Generate assembly .asm files using -S flag
 %.asm: %.c
-	$(CC) -S $< $(CFLAGS) -o $@ -I$(INCLUDES) $(DEFINES)
+	$(CC) -S $< $(CFLAGS) -o $@ $(INCLUDE_PATH) $(DEFINES)
 
 #Generate object .o file using -c flag
 %.o: %.c
-	$(CC) -c $< $(CFLAGS) -o $@ -I$(INCLUDES) $(DEFINES)
-
+	$(CC) -c $< $(CFLAGS) -o $@ $(INCLUDE_PATH) $(DEFINES)
+#Generate dependencies .d file using -M flag
+%.d: %.c
+	$(CC) -M $< $(CFLAGS) -o $@ $(INCLUDE_PATH) $(DEFINES)
 #Compile-all .PHONY, but don't link (ex. make compile-all)
 .PHONY: compile-all
 compile-all:
-	$(CC) $(CFLAGS) -o c1m2.out main.c -I$(INCLUDES) $(DEFINES)
+	$(CC) -c $(CFLAGS) $(INCLUDE_PATH) $(DEFINES) $(SOURCES)
 
 #Compile all object .PHONY (ex. make build)
 .PHONY: build
-build:
-	$(CC) $(CFLAGS) -o 
+build: $(TARGET).out
+
+$(TARGET).out: $(OBJS) $(DEPS)
+	$(CC) $(OBJS) $(CFLAGS) $(LDFLAGS) -o $@ $(DEFINES) $(INCLUDE_PATH)
+	$(PRINT_SIZE) $(TARGET).out
 
 #Clean
 .PHONY: clean
 clean:
-	rm -rf *.o *.i *.asm
+	rm -rf *.o *.i *.asm *.map *.out
+
